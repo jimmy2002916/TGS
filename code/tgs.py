@@ -1,11 +1,20 @@
 
 # coding: utf-8
 
-# In[2]:
+# In[117]:
 
 
 import numpy as np
 import pandas as pd
+
+from keras.preprocessing.image import load_img
+from keras import Model
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from keras.models import load_model
+from keras.optimizers import Adam
+from keras.utils.vis_utils import plot_model
+from keras.preprocessing.image import ImageDataGenerator
+from keras.layers import Input, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, Dropout
 
 from random import randint
 
@@ -15,18 +24,8 @@ import seaborn as sns
 sns.set_style("white")
 
 from sklearn.model_selection import train_test_split
-
 from skimage.transform import resize
-"""
-from keras.preprocessing.image import load_img
-from keras import Model
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from keras.models import load_model
-from keras.optimizers import Adam
-from keras.utils.vis_utils import plot_model
-from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import Input, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, Dropout
-"""
+
 from tqdm import tqdm_notebook
 
 from fastai.conv_learner import *
@@ -36,7 +35,7 @@ from fastai.dataset import *
 import json
 
 
-# In[3]:
+# In[118]:
 
 
 def show_img(im, figsize=None, ax=None, alpha=None):
@@ -46,7 +45,7 @@ def show_img(im, figsize=None, ax=None, alpha=None):
     return ax
 
 
-# In[4]:
+# In[119]:
 
 
 PATH = Path("..")
@@ -56,7 +55,7 @@ masks_csv = pd.read_csv("../input/train.csv")
 meta_csv = pd.read_csv("../input/train.csv")
 
 
-# In[5]:
+# In[120]:
 
 
 def show_img(im, figsize=None, ax=None, alpha=None):
@@ -66,7 +65,7 @@ def show_img(im, figsize=None, ax=None, alpha=None):
     return ax
 
 
-# In[6]:
+# In[121]:
 
 
 TRAIN_DN = 'data/tgs/train/images'
@@ -76,7 +75,7 @@ bs = 64
 nw = 16
 
 
-# In[7]:
+# In[122]:
 
 
 class MatchedFilesDataset(FilesDataset):
@@ -90,25 +89,22 @@ class MatchedFilesDataset(FilesDataset):
     
 
 
-# In[8]:
+# In[123]:
 
 
-x_names = np.array([Path(TRAIN_DN)/'%s.png' for o in masks_csv['id']])
-y_names = np.array([Path(MASKS_DN)/'%s.png' for o in masks_csv['id']])
-
-#x_names = [np.array(load_img("../input/train/images/{}.png".format(idx), grayscale=True)) for idx in tqdm_notebook(train_df.index)]
-#y_names = [np.array(load_img("../input/train/masks/{}.png".format(idx), grayscale=True)) for idx in tqdm_notebook(train_df.index)]
+x_names = np.array([Path(TRAIN_DN)/f'{o}.png' for o in masks_csv['id']])
+y_names = np.array([Path(MASKS_DN)/f'{o}.png' for o in masks_csv['id']])
 
 
-# In[36]:
+# In[124]:
 
 
-val_idxs = list(range(1))# 1008
+val_idxs = list(range(1)) # 1008
 ((val_x,trn_x),(val_y,trn_y)) = split_by_idx(val_idxs, x_names, y_names)
 
 
 
-# In[37]:
+# In[125]:
 
 
 aug_tfms = [RandomRotate(4, tfm_y=TfmType.CLASS),
@@ -116,13 +112,13 @@ aug_tfms = [RandomRotate(4, tfm_y=TfmType.CLASS),
             RandomLighting(0.05, 0.05, tfm_y=TfmType.CLASS)]
 
 
-# In[11]:
+# In[126]:
 
 
 #!rm ../data/tgs/test/.DS_Store
 
 
-# In[12]:
+# In[127]:
 
 
 file_list = os.listdir("../data/tgs/test")
@@ -132,7 +128,7 @@ else:
     print("F")
 
 
-# In[17]:
+# In[130]:
 
 
 #file_list.remove('.DS_Store')
@@ -143,21 +139,21 @@ if '.DS_Store' in file_list:
     print("T")
 else:
     print("F")
+    
+print(len(file_list))
 
 
-# In[18]:
+# In[131]:
 
 
-#import pandas as pd
-#testfile_name = pd.read_csv("testfile.csv") #This testfile.csv file is in code folder. 
 testfile_name = pd.DataFrame({'img':file_list})
 
 TEST_DN = 'data/tgs/test'
-t_names = np.array([Path(TEST_DN)/'%s.png' for o in testfile_name['img']])
+t_names = np.array([Path(TEST_DN)/f'{o}' for o in testfile_name['img']])
 test_name = (t_names ,t_names)
 
 
-# In[19]:
+# In[132]:
 
 
 tfms = tfms_from_model(resnet34, sz, crop_type=CropType.NO, tfm_y=TfmType.CLASS, aug_tfms=aug_tfms)
@@ -168,25 +164,19 @@ md = ImageData(PATH, datasets, bs, num_workers=16, classes=None)
 denorm = md.trn_ds.denorm
 
 
-# In[20]:
+# In[133]:
 
 
 x,y = next(iter(md.trn_dl))
 
 
-# In[21]:
-
-
-print(len(y))
-
-
-# In[22]:
+# In[134]:
 
 
 x.shape,y.shape
 
 
-# In[23]:
+# In[135]:
 
 
 f = resnet34
@@ -233,20 +223,20 @@ class UpsampleModel ():
         return lgs + [children(self.model.features)[1:]]
 
 
-# In[24]:
+# In[136]:
 
 
 m_base = get_base()
 
 
-# In[25]:
+# In[137]:
 
 
 m = to_gpu(Upsample34(m_base))
 models = UpsampleModel(m)
 
 
-# In[26]:
+# In[138]:
 
 
 #learn = ConvLearner(md, models) # built my model
@@ -270,34 +260,53 @@ learn.freeze_to(1)
 
 # In[156]:
 
-print("learning rate finding")
+
 learn.lr_find()
 learn.sched.plot()
 
 
-# In[157]:
+# In[153]:
 
 
-lr=1
-wd=1
-lrs = np.array([lr,lr,lr])/2
+lr=4e-2
+wd=1e-7
+
+lrs = np.array([lr/100,lr/10,lr])
 
 
-# In[158]:
+# In[154]:
 
-print("model training")
+
 learn.fit(lr,1, wds=wd, cycle_len=1,use_clr=(20,8))
 
 
-# In[40]:
+# In[150]:
 
-print("predicting")
-#import pdb; 
-#pdb.set_trace()
+
+learn.save('tmp')
+learn.load('tmp')
+
+
+# In[151]:
+
+
+learn.unfreeze()
+learn.bn_freeze(True)
+
+
+# In[152]:
+
+
+learn.fit(lrs,1,cycle_len=1,use_clr=(20,8))
+
+
+# In[155]:
+
+
 preds_test = learn.predict() 
 
 
-# In[41]:
+# In[ ]:
 
 
 def RLenc(img, order='F', format=True):
@@ -338,13 +347,14 @@ def RLenc(img, order='F', format=True):
         return runs
 
 
-# In[58]:
+# In[ ]:
 
 
-test_df = pd.DataFrame(t_names)
+testfile_name = pd.DataFrame({'img':file_list})
+testfile_name = pd.DataFrame(testfile_name.img.str.split('.',1).tolist(), columns = ['img','png'])
 
 
-# In[63]:
+# In[ ]:
 
 
 img_size_ori = 101
@@ -356,15 +366,15 @@ def downsample(img):
     return resize(img, (img_size_ori, img_size_ori), mode='constant', preserve_range=True)
 
 
-# In[64]:
+# In[ ]:
 
 
-pred_dict = {idx: RLenc(np.round(downsample(preds_test[i]) > 0.5)) for i, idx in enumerate(tqdm_notebook(test_df.index.values))}
+pred_dict = {idx: RLenc(np.round(downsample(preds_test[i]) > 0.5)) for i, idx in enumerate(tqdm_notebook(testfile_name["img"]))}
 
 
-# In[66]:
+# In[ ]:
 
-print("submitting file")
+
 sub = pd.DataFrame.from_dict(pred_dict,orient='index')
 sub.index.names = ['id']
 sub.columns = ['rle_mask']
