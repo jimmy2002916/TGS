@@ -17,7 +17,7 @@ sns.set_style("white")
 from sklearn.model_selection import train_test_split
 
 from skimage.transform import resize
-
+"""
 from keras.preprocessing.image import load_img
 from keras import Model
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
@@ -26,7 +26,7 @@ from keras.optimizers import Adam
 from keras.utils.vis_utils import plot_model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import Input, Conv2D, Conv2DTranspose, MaxPooling2D, concatenate, Dropout
-
+"""
 from tqdm import tqdm_notebook
 
 from fastai.conv_learner import *
@@ -93,8 +93,8 @@ class MatchedFilesDataset(FilesDataset):
 # In[8]:
 
 
-x_names = np.array([Path(TRAIN_DN)/f'{o}.png' for o in masks_csv['id']])
-y_names = np.array([Path(MASKS_DN)/f'{o}.png' for o in masks_csv['id']])
+x_names = np.array([Path(TRAIN_DN)/'%s.png' for o in masks_csv['id']])
+y_names = np.array([Path(MASKS_DN)/'%s.png' for o in masks_csv['id']])
 
 #x_names = [np.array(load_img("../input/train/images/{}.png".format(idx), grayscale=True)) for idx in tqdm_notebook(train_df.index)]
 #y_names = [np.array(load_img("../input/train/masks/{}.png".format(idx), grayscale=True)) for idx in tqdm_notebook(train_df.index)]
@@ -153,7 +153,7 @@ else:
 testfile_name = pd.DataFrame({'img':file_list})
 
 TEST_DN = 'data/tgs/test'
-t_names = np.array([Path(TEST_DN)/f'{o}' for o in testfile_name['img']])
+t_names = np.array([Path(TEST_DN)/'%s.png' for o in testfile_name['img']])
 test_name = (t_names ,t_names)
 
 
@@ -270,7 +270,7 @@ learn.freeze_to(1)
 
 # In[156]:
 
-
+print("learning rate finding")
 learn.lr_find()
 learn.sched.plot()
 
@@ -285,13 +285,13 @@ lrs = np.array([lr,lr,lr])/2
 
 # In[158]:
 
-
+print("model training")
 learn.fit(lr,1, wds=wd, cycle_len=1,use_clr=(20,8))
 
 
 # In[40]:
 
-
+print("predicting")
 #import pdb; 
 #pdb.set_trace()
 preds_test = learn.predict() 
@@ -364,7 +364,7 @@ pred_dict = {idx: RLenc(np.round(downsample(preds_test[i]) > 0.5)) for i, idx in
 
 # In[66]:
 
-
+print("submitting file")
 sub = pd.DataFrame.from_dict(pred_dict,orient='index')
 sub.index.names = ['id']
 sub.columns = ['rle_mask']
